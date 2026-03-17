@@ -26,6 +26,29 @@ const authMiddleware = (req: express.Request, res: express.Response, next: expre
   res.status(401).json({ success: false, error: 'Unauthorized' });
 };
 
+// Unauthenticated health check for Railway
+app.get('/api/meta/status', async (_req, res) => {
+  try {
+    const token = process.env.META_ACCESS_TOKEN;
+    if (!token) {
+      return res.json({ success: true, data: { connected: false, reason: 'No access token configured' } });
+    }
+    const { validateToken } = await import('./services/metaApi');
+    const tokenInfo = await validateToken(token);
+    res.json({
+      success: true,
+      data: {
+        connected: tokenInfo.isValid,
+        expiresAt: tokenInfo.expiresAt,
+        scopes: tokenInfo.scopes,
+        adAccountId: process.env.META_AD_ACCOUNT_ID || 'not set',
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // API routes
 app.use('/api/weeks', authMiddleware, weeksRouter);
 app.use('/api/meta', authMiddleware, metaRouter);
