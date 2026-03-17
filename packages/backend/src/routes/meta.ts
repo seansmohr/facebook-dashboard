@@ -16,10 +16,15 @@ router.post('/sync', async (req, res) => {
     }
 
     const token = process.env.META_ACCESS_TOKEN;
-    const adAccountId = process.env.META_AD_ACCOUNT_ID;
+    let adAccountId = process.env.META_AD_ACCOUNT_ID;
 
     if (!token || !adAccountId) {
-      return res.status(400).json({ success: false, error: 'Meta API credentials not configured' });
+      return res.status(400).json({ success: false, error: 'Meta API credentials not configured. Set META_ACCESS_TOKEN and META_AD_ACCOUNT_ID environment variables.' });
+    }
+
+    // Ensure ad account ID has act_ prefix
+    if (!adAccountId.startsWith('act_')) {
+      adAccountId = `act_${adAccountId}`;
     }
 
     const results: Array<{ weekLabel: string; success: boolean; error?: string }> = [];
@@ -27,6 +32,7 @@ router.post('/sync', async (req, res) => {
     for (const label of labels) {
       try {
         const timeRange = weekLabelToDateRange(label);
+        console.log(`Syncing Meta data for ${label}: ${JSON.stringify(timeRange)}`);
         const insights = await fetchMetaInsights({ adAccountId, accessToken: token, timeRange });
 
         const existing = db.prepare('SELECT * FROM weeks WHERE week_label = ?').get(label) as Record<string, any> | undefined;
@@ -65,6 +71,7 @@ router.post('/sync', async (req, res) => {
 
         results.push({ weekLabel: label, success: true });
       } catch (err: any) {
+        console.error(`Meta sync error for ${label}:`, err.message);
         results.push({ weekLabel: label, success: false, error: err.message });
       }
     }
@@ -91,13 +98,16 @@ router.post('/sync-all', async (req, res) => {
       return res.json({ success: true, data: { synced: 0, message: 'No weeks to sync' } });
     }
 
-    // Forward to sync handler
-    req.body = { weekLabels: labels };
     const token = process.env.META_ACCESS_TOKEN;
-    const adAccountId = process.env.META_AD_ACCOUNT_ID;
+    let adAccountId = process.env.META_AD_ACCOUNT_ID;
 
     if (!token || !adAccountId) {
-      return res.status(400).json({ success: false, error: 'Meta API credentials not configured' });
+      return res.status(400).json({ success: false, error: 'Meta API credentials not configured. Set META_ACCESS_TOKEN and META_AD_ACCOUNT_ID environment variables.' });
+    }
+
+    // Ensure ad account ID has act_ prefix
+    if (!adAccountId.startsWith('act_')) {
+      adAccountId = `act_${adAccountId}`;
     }
 
     const results: Array<{ weekLabel: string; success: boolean; error?: string }> = [];
@@ -105,6 +115,7 @@ router.post('/sync-all', async (req, res) => {
     for (const label of labels) {
       try {
         const timeRange = weekLabelToDateRange(label);
+        console.log(`Syncing Meta data for ${label}: ${JSON.stringify(timeRange)}`);
         const insights = await fetchMetaInsights({ adAccountId, accessToken: token, timeRange });
 
         db.prepare(`
@@ -121,6 +132,7 @@ router.post('/sync-all', async (req, res) => {
 
         results.push({ weekLabel: label, success: true });
       } catch (err: any) {
+        console.error(`Meta sync error for ${label}:`, err.message);
         results.push({ weekLabel: label, success: false, error: err.message });
       }
     }

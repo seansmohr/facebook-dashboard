@@ -12,12 +12,24 @@ export default function MetaMetrics({ weeks, onSync }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
+  const formatSyncResult = (result: any): string => {
+    if (result.synced > 0 && result.results?.every((r: any) => r.success)) {
+      return `Synced ${result.synced} weeks from Meta.`;
+    }
+    const failures = result.results?.filter((r: any) => !r.success) || [];
+    if (failures.length > 0) {
+      const firstError = failures[0].error || 'Unknown error';
+      return `Sync failed for ${failures.length} week(s): ${firstError}`;
+    }
+    return `Synced ${result.synced} weeks from Meta.`;
+  };
+
   const handleSyncAll = async () => {
     setSyncing(true);
     setSyncResult(null);
     try {
       const result = await api.syncAllMeta();
-      setSyncResult(`Synced ${result.synced} weeks from Meta.`);
+      setSyncResult(formatSyncResult(result));
       await onSync();
     } catch (err: any) {
       setSyncResult(`Sync failed: ${err.message}`);
@@ -29,8 +41,8 @@ export default function MetaMetrics({ weeks, onSync }: Props) {
     setSyncing(true);
     setSyncResult(null);
     try {
-      await api.syncMeta([label]);
-      setSyncResult(`Synced ${label} from Meta.`);
+      const result = await api.syncMeta([label]);
+      setSyncResult(formatSyncResult(result));
       await onSync();
     } catch (err: any) {
       setSyncResult(`Sync failed: ${err.message}`);
@@ -52,7 +64,7 @@ export default function MetaMetrics({ weeks, onSync }: Props) {
       </div>
 
       {syncResult && (
-        <div className={`mb-4 p-3 rounded text-sm ${syncResult.includes('failed') ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
+        <div className={`mb-4 p-3 rounded text-sm ${syncResult.toLowerCase().includes('failed') ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
           {syncResult}
         </div>
       )}
