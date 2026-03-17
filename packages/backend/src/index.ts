@@ -26,9 +26,9 @@ const authMiddleware = (req: express.Request, res: express.Response, next: expre
   res.status(401).json({ success: false, error: 'Unauthorized' });
 };
 
-// Unauthenticated health check for Railway
-app.get('/api/health', (_req, res) => {
-  res.json({ success: true, data: { status: 'ok' } });
+// Unauthenticated health check for Railway (must match Railway health check path)
+app.get('/api/meta/status', (_req, res) => {
+  res.json({ success: true, data: { connected: false, reason: 'Health check OK' } });
 });
 
 // API routes
